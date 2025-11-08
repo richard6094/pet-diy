@@ -1,12 +1,11 @@
 import { getApiKey } from '../config/apiKeyStore';
+import promptConfig from '../prompts/tshirtDesignerPrompt.json';
 
 const GOOGLE_API_BASE = 'https://generativelanguage.googleapis.com/v1beta';
 const MODEL_ID = import.meta.env.VITE_GEMINI_IMAGE_MODEL || 'models/gemini-2.5-flash-image-preview:generateContent';
-const SYSTEM_PROMPT = [
-  '你是一名T恤图案设计助手，必须返回背景为纯白色 (#FFFFFF) 的 PNG 图像。',
-  '主体需要拥有清晰、干净且可识别的边缘，便于后续抠图处理。',
-  '不要添加阴影或渐变背景，确保设计居中并完整呈现主体。',
-].join('\n');
+const SYSTEM_PROMPT = Array.isArray(promptConfig.systemPromptLines)
+  ? promptConfig.systemPromptLines.join('\n')
+  : (promptConfig.systemPrompt ?? '').toString();
 
 class ModelResponseError extends Error {
   constructor(message, payload, status) {
@@ -49,21 +48,23 @@ const fileToBase64 = async (file) => {
   }
 };
 
-const buildRequestPayload = ({ prompt, imageBase64, imageType }) => {
+const buildRequestPayload = ({ prompt, images }) => {
   const cleanedPrompt = prompt?.trim();
 
-  const imagePart = {
+  if (!Array.isArray(images) || images.length === 0) {
+    throw new Error('模型请求缺少有效的图像数据');
+  }
+
+  const imageParts = images.map(({ data, mimeType }) => ({
     inline_data: {
-      mime_type: imageType || 'image/png',
-      data: imageBase64,
+      mime_type: mimeType || 'image/png',
+      data,
     },
-  };
+  }));
 
-  const promptPart = cleanedPrompt
-    ? { text: cleanedPrompt }
-    : null;
-
-  const parts = promptPart ? [imagePart, promptPart] : [imagePart];
+  const parts = cleanedPrompt
+    ? [...imageParts, { text: cleanedPrompt }]
+    : imageParts;
 
   return {
     systemInstruction: {
@@ -119,22 +120,31 @@ const parseDesignResponse = async (response) => {
   };
 };
 
-export const generateDesign = async ({ imageFile, prompt }) => {
+export const generateDesign = async ({ imageFiles, imageFile, prompt }) => {
   const apiKey = getApiKey();
   if (!apiKey) {
     throw new Error('缺少 Google Nano Banana API Key，请先配置。');
   }
 
-  if (!imageFile) {
-    throw new Error('请先上传一张宠物照片。');
+  const files = [
+    ...((Array.isArray(imageFiles) ? imageFiles : []).filter(Boolean)),
+    ...(imageFile ? [imageFile] : []),
+  ].slice(0, 3);
+
+  if (!files.length) {
+    throw new Error('请先上传宠物照片。');
   }
 
   const endpoint = buildEndpoint(apiKey);
-  const imageBase64 = await fileToBase64(imageFile);
+  const imagePayloads = await Promise.all(
+    files.map(async (file) => ({
+      data: await fileToBase64(file),
+      mimeType: file.type,
+    }))
+  );
   const payload = buildRequestPayload({
     prompt,
-    imageBase64,
-    imageType: imageFile.type,
+    images: imagePayloads,
   });
 
   let response;

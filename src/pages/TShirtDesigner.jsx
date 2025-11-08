@@ -18,7 +18,13 @@ const TShirtDesignerPage = () => {
   const [statusMessage, setStatusMessage] = useState('');
 
   const handleImageUpload = (imageData) => {
-    setUploadedImages((prev) => [...prev, imageData]);
+    setUploadedImages((prev) => {
+      const next = [...prev, imageData];
+      if (next.length <= 3) {
+        return next;
+      }
+      return next.slice(-3);
+    });
     setError(null);
   };
 
@@ -52,12 +58,15 @@ const TShirtDesignerPage = () => {
 
     setPrefillPrompt(null);
 
-    const latestImage = uploadedImages[uploadedImages.length - 1]?.file;
+    const imagesForRequest = uploadedImages
+      .slice(-3)
+      .map((item) => item.file)
+      .filter(Boolean);
 
     let modelResult = null;
     try {
       modelResult = await generateDesign({
-        imageFile: latestImage,
+        imageFiles: imagesForRequest,
         prompt: normalizedPrompt,
       });
 
@@ -79,6 +88,11 @@ const TShirtDesignerPage = () => {
         imageUrl: processed.dataUrl,
         originalImageUrl: modelResult.imageUrl,
         backgroundProcessed: true,
+        processedMetadata: {
+          width: processed.width,
+          height: processed.height,
+          cropBox: processed.cropBox,
+        },
         description: normalizedPrompt
           ? `基于提示词 "${normalizedPrompt}" 生成并优化的T恤设计`
           : '根据上传的宠物照片生成并优化的T恤设计',
@@ -92,6 +106,7 @@ const TShirtDesignerPage = () => {
         imageUrl: modelResult.imageUrl,
         originalImageUrl: modelResult.imageUrl,
         backgroundProcessed: false,
+        processedMetadata: null,
         description: normalizedPrompt
           ? `基于提示词 "${normalizedPrompt}" 生成的T恤设计（背景处理失败，展示原图）`
           : '根据上传的宠物照片生成的T恤设计（背景处理失败，展示原图）',
@@ -129,50 +144,33 @@ const TShirtDesignerPage = () => {
           </div>
         </header>
 
-        <main className="px-6 py-6">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: '1fr 1fr 1fr',
-              gap: '32px',
-              alignItems: 'start',
-            }}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ height: '500px' }}>
-                <ImageUpload onImageUpload={handleImageUpload} />
-              </div>
+        <main className="px-6 py-6 flex flex-col gap-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+            <div className="h-[500px]">
+              <ImageUpload onImageUpload={handleImageUpload} />
             </div>
 
-            <div style={{ height: '500px' }}>
+            <div className="h-[500px]">
               <UploadedImagesPanel
                 uploadedImages={uploadedImages}
                 onRemoveImage={handleRemoveImage}
               />
             </div>
+          </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div style={{ height: '500px', display: 'flex', flexDirection: 'column' }}>
-                <PromptInput
-                  onSubmit={handlePromptSubmit}
-                  isLoading={isLoading}
-                  externalPrompt={prefillPrompt}
-                  onExternalPromptUsed={() => setPrefillPrompt(null)}
-                />
-              </div>
-
-              <ApiKeyManager />
+          <div className="flex justify-center">
+            <div className="w-[70%]">
+              <PromptInput
+                onSubmit={handlePromptSubmit}
+                isLoading={isLoading}
+                externalPrompt={prefillPrompt}
+                onExternalPromptUsed={() => setPrefillPrompt(null)}
+              />
             </div>
           </div>
 
-          <div
-            style={{
-              marginTop: '32px',
-              display: 'flex',
-              justifyContent: 'center',
-            }}
-          >
-            <div style={{ width: '50%' }}>
+          <div className="flex justify-center">
+            <div className="w-[80%]">
               <DesignDisplay
                 designResult={designResult}
                 isLoading={isLoading}
@@ -182,6 +180,12 @@ const TShirtDesignerPage = () => {
                 onReusePrompt={handleReusePrompt}
                 statusMessage={statusMessage}
               />
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <div className="w-[70%] mt-12">
+              <ApiKeyManager />
             </div>
           </div>
         </main>

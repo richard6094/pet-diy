@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import whiteShirtImage from '../assets/white_T_shirt.jpg';
 
 const MIN_WIDTH_RATIO = 0.2;
-const MAX_WIDTH_RATIO = 0.9;
+const MAX_WIDTH_RATIO = 0.65;
 
 const DesignDisplay = ({
   designResult,
@@ -95,6 +95,9 @@ const DesignDisplay = ({
 
       event.preventDefault();
       event.stopPropagation();
+      if (event.currentTarget?.setPointerCapture) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
       setIsDragging(true);
       document.body.style.userSelect = 'none';
       document.body.style.cursor = 'grabbing';
@@ -136,6 +139,9 @@ const DesignDisplay = ({
 
       event.preventDefault();
       event.stopPropagation();
+      if (event.currentTarget?.setPointerCapture) {
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }
       setIsResizing(true);
       document.body.style.userSelect = 'none';
       document.body.style.cursor = 'nwse-resize';
@@ -268,7 +274,7 @@ const DesignDisplay = ({
 
             {designResult?.imageUrl && (
               <div
-                className={`absolute drop-shadow-xl transition-shadow duration-150 ${
+                className={`absolute drop-shadow-xl transition-shadow duration-150 touch-none ${
                   isDragging || isResizing ? 'ring-2 ring-blue-400' : 'hover:ring-2 hover:ring-blue-300'
                 }`}
                 style={overlayStyle}
@@ -281,7 +287,7 @@ const DesignDisplay = ({
                   draggable={false}
                 />
                 <div
-                  className="absolute bottom-[-12px] right-[-12px] w-6 h-6 bg-blue-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md cursor-nwse-resize"
+                  className="absolute bottom-[-12px] right-[-12px] w-6 h-6 bg-blue-500 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-md cursor-nwse-resize touch-none"
                   onPointerDown={handleResizeStart}
                 >
                   ↘

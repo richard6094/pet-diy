@@ -37,15 +37,15 @@ const ApiKeyManager = () => {
   };
 
   return (
-    <section className="bg-white rounded-lg shadow-lg p-6 border border-gray-200">
-      <header className="mb-4">
+    <section className="bg-white rounded-lg shadow-lg p-6 border border-gray-200 flex flex-col items-center gap-6">
+      <header className="flex flex-col items-center text-center gap-2">
         <h2 className="text-lg font-semibold text-gray-900">API Key 管理</h2>
-        <p className="text-sm text-gray-600 mt-1">
+        <p className="text-sm text-gray-600">
           推荐在部署环境中使用服务端代理或环境变量，不要在公开页面暴露敏感凭据。
         </p>
       </header>
 
-      <div className="bg-gray-50 border border-gray-200 rounded-md p-3 text-sm text-gray-700 mb-4">
+      <div className="bg-gray-50 border border-gray-200 rounded-md p-4 text-sm text-gray-700 w-full max-w-xl text-center">
         <p>{renderStatus()}</p>
         {apiKey && (
           <p className="mt-2 text-xs text-gray-500 break-all">
@@ -54,9 +54,9 @@ const ApiKeyManager = () => {
         )}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div>
-          <label htmlFor="api-key-input" className="block text-sm font-medium text-gray-700 mb-1">
+      <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4 w-full">
+        <div className="w-full max-w-xl flex flex-col gap-2">
+          <label htmlFor="api-key-input" className="text-sm font-medium text-gray-700">
             输入 API Key
           </label>
           <input
@@ -69,7 +69,7 @@ const ApiKeyManager = () => {
           />
         </div>
 
-        <label className="flex items-center space-x-2 text-sm text-gray-700">
+        <label className="w-full max-w-xl flex items-center gap-2 text-sm text-gray-700">
           <input
             type="checkbox"
             checked={persist}
@@ -79,7 +79,7 @@ const ApiKeyManager = () => {
           <span>持久化到浏览器本地存储（仅建议用于本地开发）</span>
         </label>
 
-        <div className="flex space-x-3">
+        <div className="w-full max-w-xl flex flex-col sm:flex-row sm:justify-center gap-3">
           <button
             type="submit"
             className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
@@ -98,7 +98,7 @@ const ApiKeyManager = () => {
 
       {message && (
         <p
-          className={`mt-4 text-sm ${
+          className={`text-sm text-center ${
             message.type === 'error'
               ? 'text-red-600'
               : message.type === 'success'

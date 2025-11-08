@@ -41,22 +41,9 @@ const UploadedImagesPanel = ({ uploadedImages = [], onRemoveImage }) => {
           </div>
         </div>
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-gray-500 text-sm text-center border border-dashed border-gray-200 rounded-lg p-6 bg-gray-50">
-          <svg
-            className="w-10 h-10 text-gray-300 mb-3"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 4v16m8-8H4"
-            />
-          </svg>
-          <p>暂未上传任何宠物图片</p>
-          <p className="text-xs text-gray-400 mt-1">上传后将在此处展示缩略图</p>
+        <div className="flex-1 flex flex-col items-center justify-center text-gray-500 text-sm text-center border border-dashed border-gray-200 rounded-lg p-6 bg-gray-50 gap-2">
+          <p className="font-medium">暂未上传任何宠物图片</p>
+          <p className="text-xs text-gray-400">上传后将在此处展示缩略图</p>
         </div>
       )}
     </div>
