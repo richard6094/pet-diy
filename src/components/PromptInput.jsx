@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 
 const previewImages = import.meta.glob('../assets/suggestion-previews/*', {
   eager: true,
@@ -22,6 +22,7 @@ const PromptInput = ({
   const suggestionListRef = useRef(null);
   const suggestionButtonRefs = useRef([]);
   const bubbleTimeoutRef = useRef(null);
+  const bubbleContainerRef = useRef(null);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -73,7 +74,7 @@ const PromptInput = ({
   const bubbleWidth = 220;
   const bubbleHeight = 220;
 
-  const handleCloseBubble = () => {
+  const handleCloseBubble = useCallback(() => {
     setIsBubbleVisible(false);
     if (bubbleTimeoutRef.current) {
       clearTimeout(bubbleTimeoutRef.current);
@@ -81,7 +82,7 @@ const PromptInput = ({
     bubbleTimeoutRef.current = setTimeout(() => {
       setActivePreviewIndex(null);
     }, 200);
-  };
+  }, []);
 
   const handleSuggestionClick = (index) => {
   const suggestion = suggestedPrompts[index];
@@ -126,6 +127,23 @@ const PromptInput = ({
       setIsBubbleVisible(true);
     });
   };
+
+  useEffect(() => {
+    if (!isBubbleVisible) {
+      return undefined;
+    }
+
+    const handleMouseDown = (event) => {
+      if (bubbleContainerRef.current && !bubbleContainerRef.current.contains(event.target)) {
+        handleCloseBubble();
+      }
+    };
+
+    document.addEventListener('mousedown', handleMouseDown);
+    return () => {
+      document.removeEventListener('mousedown', handleMouseDown);
+    };
+  }, [isBubbleVisible, handleCloseBubble]);
 
   const activePreview =
     typeof activePreviewIndex === 'number' ? suggestedPrompts[activePreviewIndex] : null;
@@ -182,16 +200,9 @@ const PromptInput = ({
                   isBubbleVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
                 } ${bubbleStyle.originClass}`}
                 style={{ top: bubbleStyle.top, left: bubbleStyle.left }}
+                ref={bubbleContainerRef}
               >
                 <div className="relative w-full h-full rounded-[30px] shadow-2xl bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-black/5 p-3">
-                  <button
-                    type="button"
-                    onClick={handleCloseBubble}
-                    className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center text-gray-500 hover:text-gray-700 rounded-full bg-white/80 hover:bg-white transition-colors shadow-sm"
-                    aria-label="关闭预览"
-                  >
-                    ✕
-                  </button>
                   <div className="flex items-center justify-center w-full h-full">
                     <div className="w-full h-full rounded-[24px] overflow-hidden bg-white flex items-center justify-center border border-gray-100">
                       {activePreview.previewImage && !isActivePreviewBroken ? (

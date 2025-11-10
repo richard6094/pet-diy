@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import ImageUpload from '../components/ImageUpload';
 import PromptInput from '../components/PromptInput';
 import ApiKeyManager from '../components/ApiKeyManager';
@@ -16,8 +16,6 @@ const TShirtDesignerPage = () => {
   const [lastPrompt, setLastPrompt] = useState('');
   const [prefillPrompt, setPrefillPrompt] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
-  const [suggestionPreview, setSuggestionPreview] = useState(null);
-  const previewRequestIdRef = useRef(0);
 
   const handleImageUpload = (imageData) => {
     setUploadedImages((prev) => {
@@ -129,93 +127,6 @@ const TShirtDesignerPage = () => {
     setPrefillPrompt(promptText);
   };
 
-  const handleSuggestionPreviewClose = () => {
-    setSuggestionPreview(null);
-  };
-
-  const handleSuggestionPreview = async (rawPrompt) => {
-    const normalizedPrompt = rawPrompt?.trim();
-    if (!normalizedPrompt) {
-      handleSuggestionPreviewClose();
-      return;
-    }
-
-    const requestId = ++previewRequestIdRef.current;
-
-    if (!uploadedImages.length) {
-      setSuggestionPreview({
-        prompt: normalizedPrompt,
-        status: 'error',
-        imageUrl: null,
-        error: '请先上传宠物照片后再查看预览。',
-      });
-      return;
-    }
-
-    setSuggestionPreview({
-      prompt: normalizedPrompt,
-      status: 'loading',
-      imageUrl: null,
-      error: null,
-    });
-
-    const imagesForRequest = uploadedImages
-      .slice(-3)
-      .map((item) => item.file)
-      .filter(Boolean);
-
-    if (!imagesForRequest.length) {
-      if (previewRequestIdRef.current === requestId) {
-        setSuggestionPreview({
-          prompt: normalizedPrompt,
-          status: 'error',
-          imageUrl: null,
-          error: '图片读取失败，请重新上传后重试。',
-        });
-      }
-      return;
-    }
-
-    try {
-      const modelResult = await generateDesign({
-        imageFiles: imagesForRequest,
-        prompt: normalizedPrompt,
-      });
-
-      let processedResult = null;
-      try {
-        processedResult = await removeBackgroundFromImageUrl(modelResult.imageUrl);
-      } catch (bgError) {
-        console.warn('预览背景处理失败:', bgError);
-      }
-
-      if (previewRequestIdRef.current === requestId) {
-        setSuggestionPreview({
-          prompt: normalizedPrompt,
-          status: 'success',
-          imageUrl: processedResult?.dataUrl || modelResult.imageUrl,
-          error: null,
-        });
-      }
-    } catch (err) {
-      if (previewRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      const message =
-        err instanceof ModelResponseError
-          ? err.message
-          : err?.message || '生成失败，请稍后重试。';
-
-      setSuggestionPreview({
-        prompt: normalizedPrompt,
-        status: 'error',
-        imageUrl: null,
-        error: message,
-      });
-    }
-  };
-
   return (
     <div className="min-h-screen bg-gray-100 flex justify-center">
       <div style={{ width: '1000px', minHeight: '100vh' }} className="bg-white shadow-xl">
@@ -254,9 +165,6 @@ const TShirtDesignerPage = () => {
                 isLoading={isLoading}
                 externalPrompt={prefillPrompt}
                 onExternalPromptUsed={() => setPrefillPrompt(null)}
-                onSuggestionPreview={handleSuggestionPreview}
-                suggestionPreview={suggestionPreview}
-                onSuggestionPreviewClose={handleSuggestionPreviewClose}
               />
             </div>
           </div>
