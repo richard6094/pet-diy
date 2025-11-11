@@ -91,7 +91,8 @@ const PromptInput = ({
         {/* 参考设计 */}
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-3">参考设计：</h3>
-          <div className="relative flex flex-wrap gap-4">
+          <div className="relative flex justify-center">
+            <div className="grid grid-cols-2 gap-4">
             {suggestedPrompts.map((suggestion, index) => (
               <button
                 key={index}
@@ -101,7 +102,7 @@ const PromptInput = ({
                 disabled={isLoading}
               >
                 <span className="sr-only">{suggestion.text}</span>
-                <div className="w-[220px] h-[220px] rounded-[30px] shadow-2xl bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-black/5 p-3">
+                <div className="w-[min(220px,40vw)] aspect-square rounded-[30px] shadow-2xl bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-black/5 p-3">
                   <div className="flex items-center justify-center w-full h-full">
                     <div className="w-full h-full rounded-[24px] overflow-hidden bg-white flex items-center justify-center border border-gray-100">
                       {suggestion.previewImage && !failedImageMap[index] ? (
@@ -123,6 +124,7 @@ const PromptInput = ({
                 </div>
               </button>
             ))}
+            </div>
           </div>
         </div>
       </div>
