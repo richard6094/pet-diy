@@ -92,17 +92,17 @@ const PromptInput = ({
         <div>
           <h3 className="text-sm font-medium text-gray-700 mb-3">参考设计：</h3>
           <div className="relative flex justify-center">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid w-full max-w-[min(460px,90vw)] grid-cols-2 gap-4">
             {suggestedPrompts.map((suggestion, index) => (
               <button
                 key={index}
                 onClick={() => handleSuggestionClick(index)}
                 type="button"
-                className="group focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed transition-transform duration-200 hover:-translate-y-1"
+                className="group w-full focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed transition-transform duration-200 hover:-translate-y-1"
                 disabled={isLoading}
               >
                 <span className="sr-only">{suggestion.text}</span>
-                <div className="w-[min(220px,40vw)] aspect-square rounded-[30px] shadow-2xl bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-black/5 p-3">
+                <div className="w-full aspect-square max-w-[220px] rounded-[30px] shadow-2xl bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-black/5 p-3 mx-auto">
                   <div className="flex items-center justify-center w-full h-full">
                     <div className="w-full h-full rounded-[24px] overflow-hidden bg-white flex items-center justify-center border border-gray-100">
                       {suggestion.previewImage && !failedImageMap[index] ? (
