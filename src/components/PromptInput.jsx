@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 
 const previewImages = import.meta.glob('../assets/suggestion-previews/*', {
   eager: true,
@@ -15,21 +15,13 @@ const PromptInput = ({
   onExternalPromptUsed,
 }) => {
   const [prompt, setPrompt] = useState('');
-  const [activePreviewIndex, setActivePreviewIndex] = useState(null);
-  const [isBubbleVisible, setIsBubbleVisible] = useState(false);
-  const [bubbleStyle, setBubbleStyle] = useState({ top: 0, left: 0, originClass: 'origin-left' });
-  const [failedPreviewMap, setFailedPreviewMap] = useState({});
-  const suggestionListRef = useRef(null);
-  const suggestionButtonRefs = useRef([]);
-  const bubbleTimeoutRef = useRef(null);
-  const bubbleContainerRef = useRef(null);
+  const [failedImageMap, setFailedImageMap] = useState({});
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (prompt.trim() && !isLoading) {
       onSubmit(prompt.trim());
       setPrompt('');
-      handleCloseBubble();
     }
   };
 
@@ -41,12 +33,6 @@ const PromptInput = ({
       }
     }
   }, [externalPrompt, onExternalPromptUsed]);
-
-  useEffect(() => () => {
-    if (bubbleTimeoutRef.current) {
-      clearTimeout(bubbleTimeoutRef.current);
-    }
-  }, []);
 
   const suggestedPrompts = [
     {
@@ -71,84 +57,10 @@ const PromptInput = ({
     },
   ];
 
-  const bubbleWidth = 220;
-  const bubbleHeight = 220;
-
-  const handleCloseBubble = useCallback(() => {
-    setIsBubbleVisible(false);
-    if (bubbleTimeoutRef.current) {
-      clearTimeout(bubbleTimeoutRef.current);
-    }
-    bubbleTimeoutRef.current = setTimeout(() => {
-      setActivePreviewIndex(null);
-    }, 200);
-  }, []);
-
   const handleSuggestionClick = (index) => {
-  const suggestion = suggestedPrompts[index];
+    const suggestion = suggestedPrompts[index];
     setPrompt(suggestion.text);
-  setFailedPreviewMap((prev) => ({ ...prev, [index]: false }));
-
-    if (bubbleTimeoutRef.current) {
-      clearTimeout(bubbleTimeoutRef.current);
-    }
-
-    const containerRect = suggestionListRef.current?.getBoundingClientRect();
-    const buttonRect = suggestionButtonRefs.current[index]?.getBoundingClientRect();
-
-    if (containerRect && buttonRect) {
-      let left = buttonRect.right - containerRect.left + 12;
-      let top = buttonRect.top - containerRect.top - (bubbleHeight - buttonRect.height) / 2;
-      let originClass = 'origin-left';
-
-      if (left + bubbleWidth > containerRect.width) {
-        left = buttonRect.left - containerRect.left - bubbleWidth - 12;
-        originClass = 'origin-right';
-        if (left < 0) {
-          left = Math.max(containerRect.width - bubbleWidth, 0);
-        }
-      }
-
-      if (top + bubbleHeight > containerRect.height) {
-        top = Math.max(containerRect.height - bubbleHeight, 0);
-      }
-
-      if (top < 0) {
-        top = 0;
-      }
-
-      setBubbleStyle({ top, left, originClass });
-    } else {
-      setBubbleStyle({ top: 0, left: 0, originClass: 'origin-left' });
-    }
-
-    setActivePreviewIndex(index);
-    requestAnimationFrame(() => {
-      setIsBubbleVisible(true);
-    });
   };
-
-  useEffect(() => {
-    if (!isBubbleVisible) {
-      return undefined;
-    }
-
-    const handleMouseDown = (event) => {
-      if (bubbleContainerRef.current && !bubbleContainerRef.current.contains(event.target)) {
-        handleCloseBubble();
-      }
-    };
-
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, [isBubbleVisible, handleCloseBubble]);
-
-  const activePreview =
-    typeof activePreviewIndex === 'number' ? suggestedPrompts[activePreviewIndex] : null;
-  const isActivePreviewBroken =
-    typeof activePreviewIndex === 'number' ? failedPreviewMap[activePreviewIndex] : false;
 
   return (
     <div className="bg-white rounded-lg shadow-lg p-6 h-full flex flex-col">
@@ -176,42 +88,29 @@ const PromptInput = ({
       </form>
 
       <div className="mt-auto space-y-6 pt-6">
-        {/* 建议提示词 */}
+        {/* 参考设计 */}
         <div>
-          <h3 className="text-sm font-medium text-gray-700 mb-3">建议提示词：</h3>
-          <div ref={suggestionListRef} className="relative flex flex-wrap gap-2">
+          <h3 className="text-sm font-medium text-gray-700 mb-3">参考设计：</h3>
+          <div className="relative flex flex-wrap gap-4">
             {suggestedPrompts.map((suggestion, index) => (
               <button
                 key={index}
-                ref={(el) => {
-                  suggestionButtonRefs.current[index] = el;
-                }}
                 onClick={() => handleSuggestionClick(index)}
-                className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-full transition-colors duration-200"
+                type="button"
+                className="group focus:outline-none disabled:opacity-60 disabled:cursor-not-allowed transition-transform duration-200 hover:-translate-y-1"
                 disabled={isLoading}
               >
-                {suggestion.text}
-              </button>
-            ))}
-
-            {activePreview && (
-              <div
-                className={`absolute z-10 w-[220px] h-[220px] transform transition-all duration-200 ${
-                  isBubbleVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-75'
-                } ${bubbleStyle.originClass}`}
-                style={{ top: bubbleStyle.top, left: bubbleStyle.left }}
-                ref={bubbleContainerRef}
-              >
-                <div className="relative w-full h-full rounded-[30px] shadow-2xl bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-black/5 p-3">
+                <span className="sr-only">{suggestion.text}</span>
+                <div className="w-[220px] h-[220px] rounded-[30px] shadow-2xl bg-white/85 backdrop-blur-xl border border-white/60 ring-1 ring-black/5 p-3">
                   <div className="flex items-center justify-center w-full h-full">
                     <div className="w-full h-full rounded-[24px] overflow-hidden bg-white flex items-center justify-center border border-gray-100">
-                      {activePreview.previewImage && !isActivePreviewBroken ? (
+                      {suggestion.previewImage && !failedImageMap[index] ? (
                         <img
-                          src={activePreview.previewImage}
-                          alt={activePreview.previewCaption || '提示词示例图'}
-                          className="object-cover w-full h-full"
+                          src={suggestion.previewImage}
+                          alt={suggestion.previewCaption || '参考设计示例图'}
+                          className="w-full h-full object-contain max-w-full max-h-full"
                           onError={() =>
-                            setFailedPreviewMap((prev) => ({ ...prev, [activePreviewIndex]: true }))
+                            setFailedImageMap((prev) => ({ ...prev, [index]: true }))
                           }
                         />
                       ) : (
@@ -222,8 +121,8 @@ const PromptInput = ({
                     </div>
                   </div>
                 </div>
-              </div>
-            )}
+              </button>
+            ))}
           </div>
         </div>
       </div>
