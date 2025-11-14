@@ -23,12 +23,16 @@ const PromptInput = ({
   const [templateFailedMap, setTemplateFailedMap] = useState({});
   const [previewFailedMap, setPreviewFailedMap] = useState({});
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const submitPrompt = () => {
     if (prompt.trim() && !isLoading) {
       onSubmit(prompt.trim());
       setPrompt('');
     }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    submitPrompt();
   };
 
   useEffect(() => {
@@ -141,7 +145,7 @@ const PromptInput = ({
               key={key}
               type="button"
               onClick={() => setActiveMode(key)}
-              className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-all duration-200 ${
+              className={`flex-1 rounded-md px-5 py-3 text-base font-medium transition-all duration-200 ${
                 isActive
                   ? 'bg-white text-blue-600 shadow'
                   : 'text-gray-600 hover:text-blue-500'
@@ -157,19 +161,24 @@ const PromptInput = ({
         <>
           {/* 提示词输入区域 */}
           <form onSubmit={handleSubmit}>
-            <div className="flex space-x-3">
-              <input
-                type="text"
+            <div className="flex items-stretch gap-3">
+              <textarea
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) => {
+                  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+                    e.preventDefault();
+                    submitPrompt();
+                  }
+                }}
                 placeholder="描述你想要的T恤设计风格..."
-                className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+                className="flex-1 min-h-[120px] px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none resize-y"
                 disabled={isLoading}
               />
               <button
                 type="submit"
                 disabled={!prompt.trim() || isLoading}
-                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200"
+                className="px-6 py-3 bg-blue-500 hover:bg-blue-600 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors duration-200 shrink-0 self-stretch min-h-[120px] flex items-center justify-center"
               >
                 {isLoading ? '生成中...' : '生成设计'}
               </button>
@@ -228,7 +237,7 @@ const PromptInput = ({
               </p>
             </div>
 
-            <div className="flex gap-3 overflow-x-auto pb-1">
+            <div className="flex gap-3 overflow-x-auto overflow-y-hidden pb-1">
               {templateOptions.map((template) => {
                 const isSelected = selectedTemplateId === template.id;
                 const hasFailed = templateFailedMap[template.id];
