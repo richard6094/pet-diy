@@ -4,7 +4,7 @@ import PromptInput from '../components/PromptInput';
 import ApiKeyManager from '../components/ApiKeyManager';
 import DesignDisplay from '../components/DesignDisplay';
 import UploadedImagesPanel from '../components/UploadedImagesPanel';
-import { generateDesign, ModelResponseError } from '../services/aiClient';
+import { generateDesign, generateTemplateStyleTransfer } from '../services/aiClient';
 import { removeBackgroundFromImageUrl } from '../services/backgroundProcessor';
 
 const TShirtDesignerPage = () => {
@@ -16,6 +16,56 @@ const TShirtDesignerPage = () => {
   const [lastPrompt, setLastPrompt] = useState('');
   const [prefillPrompt, setPrefillPrompt] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
+  const [lastGeneration, setLastGeneration] = useState(null);
+
+  const executeDesignWorkflow = async ({ modelExecutor, buildDescription }) => {
+    let modelResult = null;
+
+    try {
+      modelResult = await modelExecutor();
+    } catch (err) {
+      console.error('生成设计失败:', err);
+      setDesignResult(null);
+      setError(err.message || '生成失败，请稍后重试。');
+      setStatusMessage('');
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      setStatusMessage('正在清理图像背景以适配T恤...');
+      const processed = await removeBackgroundFromImageUrl(modelResult.imageUrl);
+
+      setDesignResult({
+        imageUrl: processed.dataUrl,
+        originalImageUrl: modelResult.imageUrl,
+        backgroundProcessed: true,
+        processedMetadata: {
+          width: processed.width,
+          height: processed.height,
+          cropBox: processed.cropBox,
+        },
+        description: buildDescription({ backgroundProcessed: true }),
+        raw: modelResult.raw,
+      });
+      setError(null);
+      setStatusMessage('设计生成完成！');
+    } catch (bgError) {
+      console.error('背景处理失败:', bgError);
+      setDesignResult({
+        imageUrl: modelResult.imageUrl,
+        originalImageUrl: modelResult.imageUrl,
+        backgroundProcessed: false,
+        processedMetadata: null,
+        description: buildDescription({ backgroundProcessed: false }),
+        raw: modelResult.raw,
+      });
+      setError(bgError.message || '背景处理失败，已展示原始设计。');
+      setStatusMessage('');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleImageUpload = (imageData) => {
     setUploadedImages((prev) => {
@@ -47,11 +97,13 @@ const TShirtDesignerPage = () => {
 
     const normalizedPrompt = prompt?.trim() || '';
     setLastPrompt(normalizedPrompt);
+    setLastGeneration({ type: 'creative', prompt: normalizedPrompt });
 
     if (!skipHistory) {
       const newMessage = {
         prompt: normalizedPrompt,
         timestamp: new Date().toISOString(),
+        type: 'creative',
       };
       setMessageHistory((prev) => [newMessage, ...prev]);
     }
@@ -63,64 +115,83 @@ const TShirtDesignerPage = () => {
       .map((item) => item.file)
       .filter(Boolean);
 
-    let modelResult = null;
-    try {
-      modelResult = await generateDesign({
-        imageFiles: imagesForRequest,
-        prompt: normalizedPrompt,
-      });
+    await executeDesignWorkflow({
+      modelExecutor: () =>
+        generateDesign({
+          imageFiles: imagesForRequest,
+          prompt: normalizedPrompt,
+        }),
+      buildDescription: ({ backgroundProcessed }) => {
+        if (normalizedPrompt) {
+          return backgroundProcessed
+            ? `基于提示词 "${normalizedPrompt}" 生成并优化的T恤设计`
+            : `基于提示词 "${normalizedPrompt}" 生成的T恤设计（背景处理失败，展示原图）`;
+        }
 
-      // 模型原始返回已不再展示
-    } catch (err) {
-      console.error('生成设计失败:', err);
-      setDesignResult(null);
-      setError(err.message || '生成失败，请稍后重试。');
-      setStatusMessage('');
-      setIsLoading(false);
+        return backgroundProcessed
+          ? '根据上传的宠物照片生成并优化的T恤设计'
+          : '根据上传的宠物照片生成的T恤设计（背景处理失败，展示原图）';
+      },
+    });
+  };
+
+  const handleTemplateSubmit = async (templateOption, { skipHistory = false } = {}) => {
+    if (!templateOption) {
       return;
     }
 
-    try {
-      setStatusMessage('正在清理图像背景以适配T恤...');
-      const processed = await removeBackgroundFromImageUrl(modelResult.imageUrl);
-
-      setDesignResult({
-        imageUrl: processed.dataUrl,
-        originalImageUrl: modelResult.imageUrl,
-        backgroundProcessed: true,
-        processedMetadata: {
-          width: processed.width,
-          height: processed.height,
-          cropBox: processed.cropBox,
-        },
-        description: normalizedPrompt
-          ? `基于提示词 "${normalizedPrompt}" 生成并优化的T恤设计`
-          : '根据上传的宠物照片生成并优化的T恤设计',
-        raw: modelResult.raw,
-      });
-      setError(null);
-      setStatusMessage('设计生成完成！');
-    } catch (bgError) {
-      console.error('背景处理失败:', bgError);
-      setDesignResult({
-        imageUrl: modelResult.imageUrl,
-        originalImageUrl: modelResult.imageUrl,
-        backgroundProcessed: false,
-        processedMetadata: null,
-        description: normalizedPrompt
-          ? `基于提示词 "${normalizedPrompt}" 生成的T恤设计（背景处理失败，展示原图）`
-          : '根据上传的宠物照片生成的T恤设计（背景处理失败，展示原图）',
-        raw: modelResult.raw,
-      });
-      setError(bgError.message || '背景处理失败，已展示原始设计。');
-      setStatusMessage('');
-    } finally {
-      setIsLoading(false);
+    if (!uploadedImages.length) {
+      setError('请先上传宠物照片后再进行模板替换。');
+      return;
     }
+
+    setIsLoading(true);
+    setStatusMessage('正在根据模板生成设计...');
+    setError(null);
+    setDesignResult(null);
+    setPrefillPrompt(null);
+
+    const userFiles = uploadedImages
+      .slice(-1)
+      .map((item) => item.file)
+      .filter(Boolean);
+
+    const historyLabel = `模板替换：${templateOption.title}`;
+    setLastPrompt(historyLabel);
+    setLastGeneration({ type: 'template', templateOption });
+
+    if (!skipHistory) {
+      const newMessage = {
+        prompt: historyLabel,
+        timestamp: new Date().toISOString(),
+        type: 'template',
+        templateId: templateOption.id,
+      };
+      setMessageHistory((prev) => [newMessage, ...prev]);
+    }
+
+    await executeDesignWorkflow({
+      modelExecutor: () =>
+        generateTemplateStyleTransfer({
+          templateImageUrl: templateOption.previewImage,
+          templateName: templateOption.title,
+          userImageFiles: userFiles,
+          templateInstructions: templateOption.styleInstructions,
+        }),
+      buildDescription: ({ backgroundProcessed }) =>
+        backgroundProcessed
+          ? `基于模板「${templateOption.title}」为您的宠物生成并优化的T恤设计`
+          : `基于模板「${templateOption.title}」生成的T恤设计（背景处理失败，展示原图）`,
+    });
   };
 
   const handleRetry = () => {
-    handlePromptSubmit(lastPrompt, { skipHistory: true });
+    if (lastGeneration?.type === 'template' && lastGeneration.templateOption) {
+      handleTemplateSubmit(lastGeneration.templateOption, { skipHistory: true });
+      return;
+    }
+
+    handlePromptSubmit(lastGeneration?.prompt ?? lastPrompt, { skipHistory: true });
   };
 
   const handleReusePrompt = (promptText) => {
@@ -165,6 +236,8 @@ const TShirtDesignerPage = () => {
                 isLoading={isLoading}
                 externalPrompt={prefillPrompt}
                 onExternalPromptUsed={() => setPrefillPrompt(null)}
+                onTemplateSubmit={handleTemplateSubmit}
+                hasUploadedImages={uploadedImages.length > 0}
               />
             </div>
           </div>

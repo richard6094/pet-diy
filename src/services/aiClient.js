@@ -48,6 +48,47 @@ const fileToBase64 = async (file) => {
   }
 };
 
+const createFileLike = (blob, fileName) => {
+  const mimeType = blob.type || 'image/png';
+
+  if (typeof File === 'function') {
+    return new File([blob], fileName, { type: mimeType });
+  }
+
+  return {
+    name: fileName,
+    type: mimeType,
+    size: blob.size,
+    lastModified: Date.now(),
+    arrayBuffer: () => blob.arrayBuffer(),
+    slice: (...args) => blob.slice(...args),
+  };
+};
+
+const fetchAssetAsFile = async (assetUrl, fallbackName = 'template-reference.png') => {
+  if (!assetUrl) {
+    throw new Error('缺少模板示例资源');
+  }
+
+  let response;
+  try {
+    response = await fetch(assetUrl);
+  } catch (networkError) {
+    console.error('获取模板资源失败', networkError);
+    throw new Error('无法加载模板示例图，请检查网络后重试。');
+  }
+
+  if (!response.ok) {
+    console.error('模板资源响应异常', response.status, assetUrl);
+    throw new Error('模板示例图加载失败，请稍后再试。');
+  }
+
+  const blob = await response.blob();
+  const fileName = fallbackName || `template-${Date.now()}.png`;
+
+  return createFileLike(blob, fileName);
+};
+
 const buildRequestPayload = ({ prompt, images }) => {
   const cleanedPrompt = prompt?.trim();
 
@@ -204,3 +245,44 @@ export const generateDesign = async ({ imageFiles, imageFile, prompt }) => {
 };
 
 export { ModelResponseError };
+
+export const generateTemplateStyleTransfer = async ({
+  templateImageUrl,
+  templateName,
+  userImageFiles,
+  templateInstructions,
+}) => {
+  const images = Array.isArray(userImageFiles) ? userImageFiles.filter(Boolean) : [];
+
+  if (!images.length) {
+    throw new Error('请先上传宠物照片。');
+  }
+
+  let templateFile;
+  try {
+    templateFile = await fetchAssetAsFile(
+      templateImageUrl,
+      templateName ? `${templateName}.png` : 'template-reference.png'
+    );
+  } catch (error) {
+    if (error instanceof ModelResponseError) {
+      throw error;
+    }
+    throw error;
+  }
+
+  const trimmedTemplateInstruction = (templateInstructions || '').trim();
+  const promptSegments = [
+    '你将收到两张图像：第一张是模板示例图，第二张是宠物照片。',
+    trimmedTemplateInstruction || null,
+    '请分析模板的构图、色彩与材质，将模板中的主体替换成宠物主体，确保自然融入，风格与模板保持一致，并保留模板的关键装饰元素。',
+    '生成适合印在白色T恤上的透明背景 PNG 图案，主体居中且边缘干净，无多余背景或噪点。',
+  ].filter(Boolean);
+
+  const instructions = promptSegments.join(' ');
+
+  return generateDesign({
+    imageFiles: [templateFile, ...images.slice(-1)],
+    prompt: instructions,
+  });
+};

@@ -338,8 +338,12 @@ const DesignDisplay = ({
         <div className="mt-4">
           <h3 className="text-sm font-medium text-gray-700 mb-3">历史记录：</h3>
           <div className="space-y-3 max-h-48 overflow-y-auto">
-            {messageHistory.map((message, index) => (
-              <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+            {messageHistory.map((message, index) => {
+              const messageType = message?.type || 'creative';
+              const canReuse = onReusePrompt && messageType === 'creative';
+
+              return (
+                <div key={index} className="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
                 <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
                   <span className="text-blue-600 text-sm font-medium">{index + 1}</span>
                 </div>
@@ -349,7 +353,7 @@ const DesignDisplay = ({
                     {new Date(message.timestamp).toLocaleString('zh-CN')}
                   </p>
                 </div>
-                {onReusePrompt && (
+                  {canReuse && (
                   <button
                     onClick={() => onReusePrompt(message.prompt)}
                     className="flex-shrink-0 text-blue-500 hover:text-blue-600 text-sm"
@@ -358,8 +362,9 @@ const DesignDisplay = ({
                     重用
                   </button>
                 )}
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
